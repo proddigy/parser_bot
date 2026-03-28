@@ -1,5 +1,5 @@
 """
-This module contains parsers for vinted.pl and grailed.com
+This module contains only (for now) parser for vinted.pl
 """
 
 from abc import ABC, abstractmethod

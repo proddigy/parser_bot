@@ -3,8 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
-from decouple import config
-from ..settings import DEBUG
+from ..settings import DEBUG, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
 from .models import Category
 
 Base = declarative_base()
@@ -19,9 +18,9 @@ class ParserDbClientABC(ABC):
     def __init__(self):
         self._engine = create_engine(
             f"postgresql://"
-            f"{config('DB_USER')}:{config('DB_PASSWORD')}@"
-            f"{config('DB_HOST')}:{config('DB_PORT')}/"
-            f"{config('DB_NAME')}",
+            f"{DB_USER}:{DB_PASSWORD}@"
+            f"{DB_HOST}:{DB_PORT}/"
+            f"{DB_NAME}",
             pool_size=10,  # Set a maximum number of concurrent connections to the database
             max_overflow=20,  # Allow up to 20 additional connections to be created if needed
         )
@@ -35,9 +34,9 @@ class ParserDbClientABC(ABC):
 
         if DEBUG:
             try:
-                self.clear_table()
-            except ProgrammingError:
                 self._create_table()
+            except ProgrammingError:
+                pass
 
     def _get_scopefunc(self):
         """

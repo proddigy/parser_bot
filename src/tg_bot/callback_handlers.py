@@ -1,4 +1,4 @@
-import time
+import asyncio
 
 from aiogram import types
 from aiogram.types import CallbackQuery
@@ -93,7 +93,7 @@ async def category_view_items_handler(call: CallbackQuery):
     if unpublished_items:
         for item in unpublished_items:
             await send_new_item(user_id, item)
-            time.sleep(1)
+            await asyncio.sleep(1)
     else:
         await bot.send_message(chat_id=user_id, text="No new items in this category.")
 

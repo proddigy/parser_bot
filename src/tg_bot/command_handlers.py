@@ -12,7 +12,7 @@ from src.logger import logger
 @dp.message_handler(commands=["start"])
 async def cmd_start(message: types.Message):
     user = message.from_user
-    existing_user = get_user_by_id_async(user.id)
+    existing_user = await get_user_by_id_async(user.id)
     if existing_user:
         await bot.send_message(text="Welcome back!", chat_id=user.id)
         await message.answer("Here is menu:", reply_markup=menu_keyboard())

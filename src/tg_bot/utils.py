@@ -59,7 +59,7 @@ async def edit_message_with_keyboard(message: types.Message, text: str, keyboard
             reply_markup=keyboard,
         )
     except Exception as e:
-        logger.error(f"Error editing message for chat_id {chat_id}: {e}")
+        logger.error(f"Error editing message for chat_id {message.chat.id}: {e}")
 
 
 def clear_data():

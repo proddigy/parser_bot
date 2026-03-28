@@ -3,14 +3,11 @@ This module contains telegram bot
 """
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from decouple import config
 from src.tg_bot.filter import IsAdminFilter
 from src.logger import logger
 from src.tg_bot.db_handler import init_engine
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-
-
-API_TOKEN = config('API_TOKEN')
+from src.settings import API_TOKEN
 
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()

@@ -8,12 +8,14 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from contextlib import asynccontextmanager
-from decouple import config
 from typing import Optional
 from src.db_client.models import *
 from src.logger import logger
+from src.settings import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
 
-db_config = f"postgresql+asyncpg://{config('DB_USER')}:{config('DB_PASSWORD')}@{config('DB_HOST')}:{config('DB_PORT')}/{config('DB_NAME')}"
+
+def build_db_config() -> str:
+    return f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 
 class SessionManager:
@@ -21,7 +23,6 @@ class SessionManager:
         self.async_engine = create_async_engine(db_config)
         self.sync_engine = create_sync_engine(db_config.replace("postgresql+asyncpg", "postgresql"))
         self.async_session = None
-        Base.metadata.create_all(self.sync_engine, checkfirst=True)
 
     async def init_async_session(self):
         if self.async_session is not None:
@@ -38,22 +39,30 @@ class SessionManager:
     def get_sync_session(self):
         return sessionmaker(self.sync_engine)()
 
+session_manager = None
 
-session_manager = SessionManager(db_config)
+
+def get_session_manager() -> SessionManager:
+    global session_manager
+    if session_manager is None:
+        session_manager = SessionManager(build_db_config())
+    return session_manager
 
 
 async def init_engine():
-    await session_manager.init_async_session()
-    Base.metadata.create_all(session_manager.sync_engine, checkfirst=True)
+    manager = get_session_manager()
+    await manager.init_async_session()
+    Base.metadata.create_all(manager.sync_engine, checkfirst=True)
     logger.info('Database schema initialized')
 
 
 @asynccontextmanager
 async def get_session() -> AsyncSession:
-    if session_manager.async_session is None:
-        await session_manager.init_async_session()
+    manager = get_session_manager()
+    if manager.async_session is None:
+        await manager.init_async_session()
 
-    async with session_manager.async_session() as session:
+    async with manager.async_session() as session:
         try:
             yield session
             await session.commit()
@@ -187,7 +196,7 @@ async def get_user_categories(user_id: int) -> List[Category]:
 async def clear_table() -> None:
     async with get_session() as session:
         await session.execute(delete(UserPublishedItem))
-        await session.execute(delete(Item))
+        await session.execute(delete(VintedItem))
         await session.commit()
 
 

@@ -6,11 +6,12 @@ import logging
 import os
 import sys
 import traceback
-from src.settings import DEBUG, LOG_FORMAT
+from src.settings import DEBUG, LOG_FORMAT, LOG_DIR
 from src.settings import LOG_DEBUG_FILE_PATH, LOG_INFO_FILE_PATH, LOG_WARNING_FILE_PATH, \
     LOG_ERROR_FILE_PATH
 
 logging.basicConfig(format=LOG_FORMAT)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 
 class CustomLogger:

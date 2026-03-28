@@ -2,13 +2,12 @@ import time
 
 import requests
 from src.logger import logger
+from src.settings import DOMAIN
 
 HEADERS = {
     "User-Agent": "PostmanRuntime/7.28.4",
     "Host": "www.vinted.pl",
 }
-
-DOMAIN = "pl"
 
 VINTED_URL = f"https://www.vinted.{DOMAIN}"
 VINTED_AUTH_URL = f"https://www.vinted.{DOMAIN}/auth/token_refresh"
@@ -28,7 +27,7 @@ class VintedRequester:
         self.vinted_products_endpoint = VINTED_PRODUCTS_ENDPOINT
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
-        self.set_cookies()
+        self._cookies_initialized = False
 
     def get(self, url, data=None):
         """
@@ -38,14 +37,21 @@ class VintedRequester:
         :return: dict
             Json format
         """
-        try:
-            response = self.session.get(url, params=data)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(e, exc_info=True)
-            self.set_cookies()
-            return self.get(url, data)
+        self.ensure_initialized()
+        attempts = 3
+        for attempt in range(1, attempts + 1):
+            try:
+                response = self.session.get(url, params=data)
+                response.raise_for_status()
+                return response.json()
+            except Exception as e:
+                logger.error(
+                    f"GET request failed for {url} on attempt {attempt}/{attempts}: {e}",
+                    exc_info=True,
+                )
+                self.set_cookies()
+
+        raise RuntimeError(f"Failed to fetch {url} after {attempts} attempts")
 
     def post(self, url, params=None):
         """
@@ -54,6 +60,7 @@ class VintedRequester:
         :param params: params to post
         :return: none
         """
+        self.ensure_initialized()
         response = self.session.post(url, params)
         try:
             response.raise_for_status()
@@ -63,22 +70,37 @@ class VintedRequester:
 
         return response
 
-    def set_cookies(self, attempt=1):
-        """used to set cookies"""
-        if attempt > 3:
-            logger.error("Failed to set cookies after 3 attempts")
-            time.sleep(60)
+    def ensure_initialized(self):
+        if not self._cookies_initialized:
             self.set_cookies()
 
-        try:
-            self.post(self.vinted_auth_url)
-            logger.info("Cookies set!")
-        except Exception as e:
-            logger.error(
-                f"There was an error fetching cookies for {self.vinted_url} on attempt {attempt}\n Error : {e}"
-            )
-            self.set_cookies(attempt + 1)
+    def set_cookies(self, attempt=1):
+        """used to set cookies"""
+        while attempt <= 3:
+            try:
+                response = self.session.post(self.vinted_auth_url)
+                response.raise_for_status()
+                self._cookies_initialized = True
+                logger.info("Cookies set!")
+                return
+            except Exception as e:
+                logger.error(
+                    f"There was an error fetching cookies for {self.vinted_url} on attempt {attempt}: {e}",
+                    exc_info=True,
+                )
+                attempt += 1
+
+        logger.error("Failed to set cookies after 3 attempts")
+        time.sleep(60)
+        raise RuntimeError(f"Failed to refresh cookies for {self.vinted_url}")
 
 
-requester = VintedRequester()
+_requester = None
+
+
+def get_requester() -> VintedRequester:
+    global _requester
+    if _requester is None:
+        _requester = VintedRequester()
+    return _requester
 
